@@ -5,6 +5,7 @@ from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
 
+# Init
 args = getResolvedOptions(sys.argv, ['JOB_NAME'])
 sc = SparkContext()
 glueContext = GlueContext(sc)
@@ -12,21 +13,26 @@ spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 
-# Read JSON weather files from raw bucket
-datasource = glueContext.create_dynamic_frame.from_options(
+# Load JSON from S3
+raw_df = glueContext.create_dynamic_frame.from_options(
+    format_options={"multiline": False},
     connection_type="s3",
-    connection_options={"paths": ["s3://weatheralertsystemstack-rawweatherdata95bd72b5-lyqdvzls62r4/weather/"]},
-    format="json"
+    format="json",
+    connection_options={
+        "paths": ["s3://weatheralertsystemstack-rawweatherdata95bd72b5-lyqdvzls62r4/weather/"],
+        "recurse": True
+    }
 )
 
-# Transform into star schema here (placeholder logic)
-transformed = datasource
+# Optional: clean/rename/flatten columns
+flattened_df = raw_df.relationalize("root", "s3://temp-bucket/temp/")
+main_df = flattened_df.select("root")
 
-# Write to star schema bucket
+# Save as Parquet (structured)
 glueContext.write_dynamic_frame.from_options(
-    frame=transformed,
+    frame=main_df,
     connection_type="s3",
-    connection_options={"path": "s3://weatheralertsystemstack-starschemaweatherbucket11d-v9eqt30fepe5/"},
+    connection_options={"path": "s3://weatheralertsystemstack-starschemadata96b36313-shxhruxmmcyq/"},
     format="parquet"
 )
 
