@@ -1,0 +1,1 @@
+{ "app": "npx ts-node bin/weather-alert-system.ts" }
