@@ -13,10 +13,14 @@ import * as s3assets from 'aws-cdk-lib/aws-s3-assets';
 
 export class WeatherAlertSystemStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, {
-      ...props,
-      env: { region: 'us-east-1' }
-    });
+  super(scope, id, {
+    ...props,
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: process.env.CDK_DEFAULT_REGION,
+    },
+  });
+
 
     // Buckets
     const rawBucket = new s3.Bucket(this, 'RawWeatherData');
