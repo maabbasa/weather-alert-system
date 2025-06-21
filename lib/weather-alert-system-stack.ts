@@ -9,6 +9,7 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as glue from 'aws-cdk-lib/aws-glue';
 import * as path from 'path';
+import * as s3assets from 'aws-cdk-lib/aws-s3-assets';
 
 export class WeatherAlertSystemStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -119,7 +120,10 @@ export class WeatherAlertSystemStack extends cdk.Stack {
     });
     rawBucket.grantRead(glueJobRole);
     starBucket.grantReadWrite(glueJobRole);
-
+    const glueScriptAsset = new s3assets.Asset(this, 'GlueScriptAsset', {
+      path: path.join(__dirname, '../glue/scripts/transform_weather.py'),
+    });
+    glueScriptAsset.grantRead(glueJobRole);
     // Glue Job
     new glue.CfnJob(this, 'WeatherStarSchemaJob', {
       name: 'weather-star-schema-job',
@@ -127,7 +131,7 @@ export class WeatherAlertSystemStack extends cdk.Stack {
       command: {
         name: 'glueetl',
         pythonVersion: '3',
-        scriptLocation: `s3://${rawBucket.bucketName}/glue/scripts/transform_weather.py`,
+        scriptLocation: glueScriptAsset.s3ObjectUrl, // 🔥 This points to uploaded asset
       },
       glueVersion: '4.0',
       executionProperty: { maxConcurrentRuns: 1 },
@@ -135,6 +139,22 @@ export class WeatherAlertSystemStack extends cdk.Stack {
       timeout: 10,
       numberOfWorkers: 2,
       workerType: 'G.1X',
+    });
+    new events.Rule(this, 'HourlyGlueJobSchedule', {
+      schedule: events.Schedule.rate(cdk.Duration.hours(1)),
+      targets: [
+        new targets.AwsApi({
+          service: 'Glue',
+          action: 'startJobRun',
+          parameters: {
+            JobName: 'weather-star-schema-job',
+          },
+          policyStatement: new iam.PolicyStatement({
+            actions: ['glue:StartJobRun'],
+            resources: ['*'], // Or restrict to the specific job ARN
+          }),
+        }),
+      ],
     });
 
     // Outputs
