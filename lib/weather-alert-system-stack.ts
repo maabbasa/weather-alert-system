@@ -7,6 +7,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as glue from 'aws-cdk-lib/aws-glue';
 import * as path from 'path';
 
 export class WeatherAlertSystemStack extends cdk.Stack {
@@ -107,6 +108,33 @@ export class WeatherAlertSystemStack extends cdk.Stack {
     new events.Rule(this, 'WeatherFetcherSchedule', {
       schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
       targets: [new targets.LambdaFunction(weatherFetcher)]
+    });
+
+    // Glue Job Role
+    const glueJobRole = new iam.Role(this, 'GlueJobRole', {
+      assumedBy: new iam.ServicePrincipal('glue.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSGlueServiceRole'),
+      ]
+    });
+    rawBucket.grantRead(glueJobRole);
+    starBucket.grantReadWrite(glueJobRole);
+
+    // Glue Job
+    new glue.CfnJob(this, 'WeatherStarSchemaJob', {
+      name: 'weather-star-schema-job',
+      role: glueJobRole.roleArn,
+      command: {
+        name: 'glueetl',
+        pythonVersion: '3',
+        scriptLocation: `s3://${rawBucket.bucketName}/glue/scripts/transform_weather.py`,
+      },
+      glueVersion: '4.0',
+      executionProperty: { maxConcurrentRuns: 1 },
+      maxRetries: 1,
+      timeout: 10,
+      numberOfWorkers: 2,
+      workerType: 'G.1X',
     });
 
     // Outputs
