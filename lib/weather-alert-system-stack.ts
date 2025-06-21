@@ -11,6 +11,7 @@ import * as glue from 'aws-cdk-lib/aws-glue';
 import * as path from 'path';
 import * as s3assets from 'aws-cdk-lib/aws-s3-assets';
 
+
 export class WeatherAlertSystemStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
   super(scope, id, {
