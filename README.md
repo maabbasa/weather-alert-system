@@ -42,7 +42,7 @@ This project is a fully serverless, scalable, and secure weather alert system bu
 
 ### 📁 Clone & Install
 ```bash
-git clone https://github.com/your-username/weather-alert-system.git
+git clone https://github.com/maabbasa/weather-alert-system.git
 cd weather-alert-system
 npm install
 ```
@@ -54,7 +54,7 @@ aws configure
 Make sure you have:
 - AWS_ACCESS_KEY_ID
 - AWS_SECRET_ACCESS_KEY
-- Region: eu-central-1
+- Region: us-east-1
 
 ### 🚀 Deploy to AWS
 ```bash
